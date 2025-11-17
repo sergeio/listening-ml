@@ -33,7 +33,7 @@ W.data *= .001
 eps = 1e-32
 
 
-epochs = 10000
+epochs = 100000
 model_file = f'W{epochs}.pkl-{this_file}'
 try:
     assert False
