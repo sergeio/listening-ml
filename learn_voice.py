@@ -9,15 +9,12 @@ from micrograd.engine import Value
 from micrograd.nn import Neuron, Layer, MLP
 
 VOLUME_THRESHOLD = 8
-#raw, sr = librosa.load('scale.au', sr=None)
 sergei_raw, sergei_sr = librosa.load('sergei_voice.au', sr=None)
-sheep_raw, sheep_sr = librosa.load('andrej.au', sr=None)
+sheep_raw, sheep_sr = librosa.load('sheep_voice.au', sr=None)
 
 sergei2_raw, sergei2_sr = librosa.load('sergei2.au', sr=None)
-sheep2_raw, sheep2_sr = librosa.load('andrej2.au', sr=None)
+sheep2_raw, sheep2_sr = librosa.load('sheep2.au', sr=None)
 
-def normalize(y):
-    return np.array([x/max(y) for x in y])
 def is_silence(f):
     return max(f) < VOLUME_THRESHOLD
 
@@ -48,20 +45,12 @@ data = data + data2
 print('data', len(data))
 random.shuffle(data)
 
-# # print(data[0])
-# for d in data[:20]:
-#   plt.plot(d[0])
-#   plt.show()
-
-
 cutoff = int(len(data) * .5)
 data, test = data[:cutoff], data[cutoff:]
 
 input_len = len(data[0][0])
 print('input_len', input_len)
 model = MLP(input_len, [input_len, 1])
-# model = MLP(input_len, [input_len, input_len, 1])
-# model = MLP(200, [100, 100, 1])
 
 print('cutoff', cutoff)
 print('length of  data: ',len(data))
@@ -82,11 +71,8 @@ def loss(data, model):
     labels = [label for _,label in data]
 
     for result, label in zip(results, labels):
-        # loss += (label-result).relu()
         loss += (1 + -label*result).relu()
     loss = loss/len(data)
-
-    # l2 = .001 * sum([p * p for p in model.parameters()]) / len(model.parameters())
     return loss
 
 
@@ -96,7 +82,6 @@ for i in range(1000):
     total_loss.backward()
 
     learning_rate = 0.01
-    #learning_rate = .1 - .9*i/100
     for p in model.parameters():
         p.data -= learning_rate * p.grad
     accuracy = predict(test)
