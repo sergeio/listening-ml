@@ -1,9 +1,11 @@
 import numpy as np
+import math
 import matplotlib.pyplot as plt
 import librosa
 import cProfile
 import random
 import torch
+import torch.nn.functional as F
 
 VOLUME_THRESHOLD = 8
 andrej_raw, _ = librosa.load('andrej.au', sr=None)
@@ -23,12 +25,11 @@ def make_training_data(y, label):
     for t in range(len(spec[0])):
         t_slice = [abs(x[t]) for x in spec]
         t_slice = t_slice[2:200]
-        t_slice = [sum(t_slice[5*i:5*i+5]) for i in range(int(len(t_slice) / 5))]
 
         if not is_silence(t_slice):
-            t_slice = np.array(t_slice)
-            t_slice = t_slice / (np.max(t_slice))
-            data.append(t_slice)
+        	t_slice = np.array(t_slice)
+        	t_slice = t_slice / (np.max(t_slice))
+        	data.append(t_slice)
 
     return [(x, label) for x in data]
 
@@ -40,15 +41,11 @@ sergei2_data = make_training_data(sergei2_raw, [1, 0, 0])
 sheep2_data = make_training_data(sheep2_raw, [0, 1, 0])
 andrej2_data = make_training_data(andrej2_raw, [0, 0, 1])
 
-print('sergei_data', len(sergei_data))
-print('sheep_data', len(sheep_data))
-print('andrej_data', len(andrej_data))
-min_len = min(len(sergei_data), len(sheep_data), len(andrej_data),
+min_len = min(len(sergei_data), len(sheep_data), len(andrej_data), 
               len(sergei2_data), len(sheep2_data), len(andrej2_data))
-print('min_len', min_len)
 
 data = sergei_data[:min_len] + sheep_data[:min_len] + andrej_data[:min_len]
-data2 = sergei2_data[:min_len] + sheep2_data[:min_len] + andrej2_data[:min_len]
+data2 = sergei2_data[:min_len] + sheep2_data[:min_len] + andrej2_data[:min_len] 
 data = data + data2
 print('data', len(data))
 random.shuffle(data)
@@ -64,44 +61,35 @@ print('input_len', input_len)
 
 # Pytorch stuff
 
-xs = torch.Tensor([x for x,_ in data])
-ys = torch.Tensor([label for _,label in data])
+xs = torch.Tensor(np.array([x for x,_ in data]))
+ys = torch.Tensor(np.array([label for _,label in data]))
 
-txs = torch.Tensor([x for x,_ in test])
-tys = torch.Tensor([label for _,label in test])
+txs = torch.Tensor(np.array([x for x,_ in test]))
+tys = torch.Tensor(np.array([label for _,label in test]))
 
-V = torch.randn((input_len, input_len), requires_grad=True)
 W = torch.randn((input_len, 3), requires_grad=True)
 eps = 1e-8
 
-output = []
-for i in range(int(1e4)):
-    # Forward pass
-    counts = (xs @ V).exp()
-    probs = counts/counts.sum(1, keepdims=True)
-    counts = (probs @ W).exp()
-    probs = counts/counts.sum(1, keepdims=True)
-    nll = -(probs*ys).sum(1, keepdims=True).log()
-    loss = nll.mean()
-    # Backward pass
-    V.grad = None
-    W.grad = None
-    loss.backward()
-    W.data -= 300 * W.grad
 
-    # Sanity
-    test_predicted = torch.argmax((txs @ V @ W).exp(), dim=1)
-    test_actual = torch.argmax((tys), dim=1)
-    test_result = torch.eq(test_predicted,test_actual)
-    test_accuracy = test_result.sum()/len(test_result)
+for i in range(10000):
+	# Forward pass
+	# counts = (xs @ W).exp()
+	# probs = counts/counts.sum(1, keepdims=True)
+	# nll = -(probs*ys).sum(1, keepdims=True).log()
+	# loss = nll.mean()
+	# line below is effectively the same as the 4 lines above, but more efficient.
+	loss = F.cross_entropy(xs @ W, ys)
 
-    data_predicted = torch.argmax((xs @ V @ W).exp(), dim=1)
-    data_actual = torch.argmax((ys), dim=1)
-    data_result = torch.eq(data_predicted,data_actual)
-    data_accuracy = data_result.sum()/len(data_result)
+	# Backward pass
+	W.grad = None
+	loss.backward()
+	W.data -= 1 * W.grad
 
-    print(f'{loss.data=} {data_accuracy=} {test_accuracy=}')
 
-print('\n'.join(output[:20]))
-print()
-print('\n'.join(output[-10:]))
+	# Sanity
+	predicted = torch.argmax((txs @ W).exp(), dim=1)
+	actual = torch.argmax((tys), dim=1)
+	result = torch.eq(predicted,actual)
+	accuracy = result.sum()/len(result)
+
+	print(f'{loss.data=}, {accuracy=}')
