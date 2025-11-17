@@ -10,7 +10,7 @@ import os
 
 this_file = os.path.basename(__file__)
 
-datafile, sr = librosa.load('andrej.au', sr=None)
+datafile, sr = librosa.load('ma.au', sr=None)
 spec = librosa.stft(datafile, n_fft=2048, hop_length=2048 // 2)
 mag, phase = librosa.magphase(spec)
 
@@ -29,28 +29,19 @@ t_size = len(data)-1
 f_size = len(data[0])
 
 W = torch.randn(f_size, f_size, requires_grad=True)
+W.data *= .001
 eps = 1e-32
 
 
-epochs = 100000
+epochs = 10000
 model_file = f'W{epochs}.pkl-{this_file}'
-print(model_file)
 try:
-    print(f'read model {model_file}')
-    W = pickle.load(open(model_file, 'rb'))
+    assert False
+    # W = pickle.load(open(model_file, 'rb'))
+    # print(f'read model {model_file}')
 except:
     for j in range(epochs):
-        rate = 1
-        # if j > 1000:
-        #     rate = 1
-        # if j > 2000:
-        #     rate = .5
-        # if j > 3000:
-        #     rate = .25
-        # if j > 3000:
-        #     rate = .12
-        # if j > 4000:
-        #     rate = .5
+        rate = .04
         loss = 0
         # Forward pass
         # loss = F.cross_entropy(xs @ W, ys)
@@ -71,20 +62,14 @@ except:
     pickle.dump(W, open(model_file, 'wb'))
     print(f'wrote model {model_file}')
 
-os = xs @ W.detach()
-os = torch.cat((xs[0].unsqueeze(0), os), dim=0)
+# os = xs @ W.detach()
+# os = torch.cat((xs[0].unsqueeze(0), os), dim=0)
 
-# os = [xs[0]]
-# for i in range(1, t_size):
-#   os.append(os[i-1] @ W.detach())
-#os = xs
+os = [xs[0]]
+for i in range(1, t_size):
+  os.append(os[i-1] @ W.detach())
 
 # os = xs
-
-
-
-# os = os[:len(os)//2]
-# ys = os[:len(ys)//2]
 
 # os = data
 # for j, o in enumerate(os):
