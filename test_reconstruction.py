@@ -10,7 +10,7 @@ import os
 
 this_file = os.path.basename(__file__)
 
-datafile, sr = librosa.load('ah.au', sr=None)
+datafile, sr = librosa.load('wawu.au', sr=None)
 spec = librosa.stft(datafile, n_fft=2048, hop_length=2048 // 2)
 mag, phase = librosa.magphase(spec)
 
@@ -74,5 +74,5 @@ for f in range(f_size):
     out_spec.append(f_slice)
 
 f_reconstructed = librosa.istft(np.array(out_spec), n_fft=2048, hop_length=2048 // 2)
-soundfile.write('test.wav', f_reconstructed, sr)
+soundfile.write('test_reconstruction.wav', f_reconstructed, sr)
 
