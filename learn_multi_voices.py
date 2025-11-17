@@ -19,8 +19,6 @@ sergei2_raw, _ = librosa.load('sergei2.au', sr=None)
 sheep2_raw, _ = librosa.load('sheep2.au', sr=None)
 
 
-def normalize(y):
-    return np.array([x/max(y) for x in y])
 def is_silence(f):
     return max(f) < VOLUME_THRESHOLD
 
@@ -36,7 +34,7 @@ def make_training_data(y, label):
             data.append(t_slice)
 
         t_slice = np.array(t_slice)
-        t_slice = t_slice / (np.max(t_slice))# + 1e-8)
+        t_slice = t_slice / (np.max(t_slice))
     return [(x, label) for x in data]
 
 sergei_data = make_training_data(sergei_raw, [1, 0, 0])
@@ -60,12 +58,6 @@ data = data + data2
 print('data', len(data))
 random.shuffle(data)
 
-# # print(data[0])
-# for d in data[:20]:
-#   plt.plot(d[0])
-#   plt.show()
-
-
 cutoff = int(len(data) * .5)
 data, test = data[:cutoff], data[cutoff:]
 
@@ -74,9 +66,6 @@ print('input_len', input_len)
 model = MLP(input_len, [input_len, 3])
 for p in model.parameters():
     p.data *= 0.2
-
-# model = MLP(input_len, [input_len, input_len, 1])
-# model = MLP(200, [100, 100, 1])
 
 print('cutoff', cutoff)
 print('length of  data: ',len(data))
@@ -117,45 +106,11 @@ def loss(data, model):
         if prob_values.index(max(prob_values)) == label.index(1):
             accuracy += 1
             correct = True
-        # if random.random() < 1e-2:
-        #     print(f'{correct=} {prob_values=} {label=}')
 
         total = total + sample_loss
 
     # This is a Value object division
     return total / len(data), accuracy / len(data)
-
-# def softmax(values):
-#     exps = [np.exp(v.data) for v in values]
-#     s = sum(exps)
-#     return [Value(e / s) for e in exps]
-
-# def loss(data, model):
-#     eps = 1e-8
-#     total = 0
-#     for x, label in data:
-#         out = model(x)
-#         probs = softmax(out)
-#         total += -sum(label[i] * np.log(probs[i].data + eps) for i in range(3))
-#     return Value(total / len(data))
-
-# def loss(data, model):
-#     loss = 0.0
-#     results = [softmax(model(input_)) for input_, _ in data]
-#     #results = softmax(results)
-#     labels = [label for _,label in data]
-#
-#     for result, label in zip(results, labels):
-#         # result is a list of 3 Value objects, label is [1,0,0] or [0,1,0] or [0,0,1]
-#         # Sum of squared differences
-#         for i in range(3):
-#             loss += (result[i] - label[i])**2
-#
-#     loss = loss/len(data)
-#
-#     # l2 = .001 * sum([p * p for p in model.parameters()]) / len(model.parameters())
-#     return loss
-
 
 for i in range(15):
     total_loss, data_accuracy = loss(data, model)
@@ -165,7 +120,6 @@ for i in range(15):
     grads = [abs(p.grad) for p in model.parameters()]
 
     learning_rate = .01
-    #learning_rate = .1 - .9*i/100
     for p in model.parameters():
         p.data -= learning_rate * p.grad
     # test_accuracy = predict(data)
