@@ -4,7 +4,7 @@ import soundfile
 import torch
 from torch import nn
 
-datafile, sr = librosa.load('wawu.au', sr=None)
+datafile, sr = librosa.load('andrej.au', sr=None)
 spec = librosa.stft(datafile, n_fft=2048, hop_length=2048 // 2)
 freq_mag, freq_phase = librosa.magphase(spec)
 
@@ -16,7 +16,7 @@ for t in range(t_size):
     t_slice = [f[t] for f in freq_mag]
     data.append(t_slice)
 
-CONTEXT_WINDOW = 2
+CONTEXT_WINDOW = 5
 
 xs = torch.Tensor(data[:-1])
 ys = torch.Tensor(data[CONTEXT_WINDOW:])
@@ -36,11 +36,12 @@ layers = [
 ]
 parameters = [p for layer in layers for p in layer.parameters()]
 
-def overlapping_windows(array, size):
-    return [tuple(array[i:i+size]) for i in range(len(array) - size + 1)]
+def overlapping_windows(array, window_size):
+    num_windows = len(array) - window_size + 1
+    # i is the start of each window
+    return [tuple(array[i:i+window_size]) for i in range(num_windows)]
 assert overlapping_windows(list(range(5)), 3) == [(0, 1, 2), (1, 2, 3), (2, 3, 4)]
 
-os = []
 epochs = 10000
 for j in range(epochs):
     os = [torch.cat(w) for w in overlapping_windows(xs, CONTEXT_WINDOW)]
