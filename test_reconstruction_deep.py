@@ -19,14 +19,18 @@ for t in range(t_size):
 xs = torch.Tensor(data[:-1])
 ys = torch.Tensor(data[1:])
 
+HIDDEN_SIZE = 500
 layers = [
-    nn.Linear(f_size, f_size, bias=False),
-    nn.BatchNorm1d(f_size),
+    nn.Linear(f_size, HIDDEN_SIZE, bias=False), nn.BatchNorm1d(HIDDEN_SIZE),
+    nn.Tanh(),
+    nn.Linear(HIDDEN_SIZE, HIDDEN_SIZE, bias=False), nn.BatchNorm1d(HIDDEN_SIZE),
+    nn.Tanh(),
+    nn.Linear(HIDDEN_SIZE, f_size, bias=False), nn.BatchNorm1d(f_size),
 ]
 parameters = [p for layer in layers for p in layer.parameters()]
 
 os = []
-epochs = 50000
+epochs = 10000
 for j in range(epochs):
     os = xs
     for layer in layers:
@@ -38,7 +42,7 @@ for j in range(epochs):
         p.grad = None
     loss.backward()
 
-    lr = 10
+    lr = 5
     for p in parameters:
         p.data -= lr * p.grad
 
