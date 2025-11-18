@@ -4,7 +4,7 @@ import soundfile
 import torch
 from torch import nn
 
-datafile, sr = librosa.load('andrej.au', sr=None)
+datafile, sr = librosa.load('fraug.au', sr=None)
 spec = librosa.stft(datafile, n_fft=2048, hop_length=2048 // 2)
 freq_mag, freq_phase = librosa.magphase(spec)
 
@@ -42,7 +42,7 @@ def overlapping_windows(array, window_size):
     return [tuple(array[i:i+window_size]) for i in range(num_windows)]
 assert overlapping_windows(list(range(5)), 3) == [(0, 1, 2), (1, 2, 3), (2, 3, 4)]
 
-epochs = 10000
+epochs = 20000
 for j in range(epochs):
     os = [torch.cat(w) for w in overlapping_windows(xs, CONTEXT_WINDOW)]
     os = torch.stack(os)  # stack turns our list of tensors into a 2d tensor
