@@ -16,23 +16,35 @@ for t in range(t_size):
     t_slice = [f[t] for f in freq_mag]
     data.append(t_slice)
 
+CONTEXT_WINDOW = 2
+
 xs = torch.Tensor(data[:-1])
-ys = torch.Tensor(data[1:])
+ys = torch.Tensor(data[CONTEXT_WINDOW:])
 
 HIDDEN_SIZE = 500
 layers = [
-    nn.Linear(f_size, HIDDEN_SIZE, bias=False), nn.BatchNorm1d(HIDDEN_SIZE),
+    nn.Linear(f_size * CONTEXT_WINDOW, HIDDEN_SIZE, bias=False),
+    nn.BatchNorm1d(HIDDEN_SIZE),
     nn.Tanh(),
-    nn.Linear(HIDDEN_SIZE, HIDDEN_SIZE, bias=False), nn.BatchNorm1d(HIDDEN_SIZE),
+
+    nn.Linear(HIDDEN_SIZE, HIDDEN_SIZE, bias=False),
+    nn.BatchNorm1d(HIDDEN_SIZE),
     nn.Tanh(),
-    nn.Linear(HIDDEN_SIZE, f_size, bias=False), nn.BatchNorm1d(f_size),
+
+    nn.Linear(HIDDEN_SIZE, f_size, bias=False),
+    nn.BatchNorm1d(f_size),
 ]
 parameters = [p for layer in layers for p in layer.parameters()]
+
+def overlapping_windows(array, size):
+    return [tuple(array[i:i+size]) for i in range(len(array) - size + 1)]
+assert overlapping_windows(list(range(5)), 3) == [(0, 1, 2), (1, 2, 3), (2, 3, 4)]
 
 os = []
 epochs = 10000
 for j in range(epochs):
-    os = xs
+    os = [torch.cat(w) for w in overlapping_windows(xs, CONTEXT_WINDOW)]
+    os = torch.stack(os)  # stack turns our list of tensors into a 2d tensor
     for layer in layers:
         os = layer(os)
     loss = ((os - ys)**2).mean()
@@ -53,9 +65,10 @@ for j in range(epochs):
 for layer in layers:
     layer.training = False
 with torch.no_grad():
-    os = [torch.tensor(xs[0])]
+    os = list(xs[:CONTEXT_WINDOW])
     for _ in range(t_size):
-        input_os = os[-1].unsqueeze(0)
+        input_os = torch.cat(tuple(os[-CONTEXT_WINDOW:]))
+        input_os = input_os.unsqueeze(0)
         for layer in layers:
             input_os = layer(input_os)
         os.append(input_os[0])
